@@ -1,2 +1,2 @@
-# gif_extractor
+# gtf_extractor
 A tool for extracting data from a gtf file
