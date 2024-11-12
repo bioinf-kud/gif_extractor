@@ -78,6 +78,14 @@ struct other_feature{
     int feature_end;//position on chromosome
     int feature_length;
     };
+struct trans_structure{
+    char gene_id[20];
+    char transcript_id[20];
+    char strand;
+    int length;
+    int start_coord;//first bp of start codon
+    int stop_coord;//last bp of stop codon
+    };
 void fgetstre(char*a,FILE*f);//scan attribute from file
 int fgetattr(char*attrn,char*attrv,FILE*f);//get one attribute from file
 int scan_row(FILE*gtf,struct gtfinfo*gtfinfo);//scan a row from gtf file
@@ -93,11 +101,15 @@ void write_CDS(struct CDS*CDS_list,struct gtfinfo*gtf,int tempt,int tempe,int te
 void write_UTR(struct UTR*UTR_list,struct gtfinfo*gtf,int tempt,int tempe,int tempu);
 void write_other(struct other_feature*other_list,struct gtfinfo*gtf,int tempt,int tempe,int tempo);
 void write_close(struct gene*gene_list,struct transcript*transcript_list,int tempg,int tempt,int tempe,int tempc,int tempu,int tempo);
+int getpos(struct transcript*translist,struct exon*exonlist,struct other_feature*otherlist,struct trans_structure*transstructurelist);
 int main(){
     int genenum=0,transnum=0,exonnum=0,CDSnum=0,UTRnum=0,othernum=0;//calculate number of each feature
-    FILE*gtf,*out;//gtf file
-    gtf=fopen("gtfdir","r");//open gtf file for scan
-    out=fopen("outdir","w+");//open output file
+    FILE*gtf,*out1,*out2,*out3,*out4;//gtf file
+    gtf=fopen("/Users/sunkai/Desktop/gencode.v46.chr_patch_hapl_scaff.annotation.gtf","r");//open gtf file for scan
+    out1=fopen("/Users/sunkai/Desktop/Gene_transcript information.tsv","w+");//open output file
+    //out2=fopen("/Users/sunkai/Downloads/longest_trans_list.v44.longest_PC.tsv","w+");
+    out3=fopen("/Users/sunkai/Downloads/canonical_trans_list.tsv","w+");
+    out4=fopen("/Users/sunkai/Desktop/trans_list.v46.tsv","w+");
     struct gtfinfo*gtfrow;
     struct gene*genelist;
     struct transcript*translist;
@@ -105,6 +117,7 @@ int main(){
     struct CDS*CDSlist;
     struct UTR*UTRlist;
     struct other_feature*otherlist;
+    struct trans_structure*transstructurelist;
     gtfrow=(struct gtfinfo*)malloc(sizeof(struct gtfinfo)*1);//record a row of gtf
 
     //scan to count number of each feature
@@ -151,7 +164,6 @@ int main(){
             copystr((genelist+gflag)->chromosome,gtfrow->seqname);
 
         }
-            
         else if(strcmp(gtfrow->feature,"transcript")==0){
             tflag++;
             write_transcript(translist,gtfrow,gflag,tflag,eflag,cflag,uflag,oflag);
@@ -178,6 +190,7 @@ int main(){
             break;
         }
     }
+    
     for(int i=0;i<transnum;i++){
         translist[i].EXON_length=0;
         translist[i].CDS_length=0;
@@ -191,9 +204,34 @@ int main(){
     printf("successfully read the gtf file!\nassigned features:\n");
     printf("gene:%d\ntranscript:%d\nexon:%d\nCDS:%d\nUTR:%d\nother:%d\n",gflag+1,tflag+1,eflag+1,cflag+1,uflag+1,oflag+1);
     fclose(gtf);
-    //select longest transcript
-    printf("Start selecting the longest transcript.\n");
+
+    int pcnum=0;
     for(int i=0;i<genenum;i++){
+        if(strcmp((genelist+i)->gene_type,"protein_coding")==0){
+            pcnum++;
+        }
+    }
+    transstructurelist=(struct trans_structure*)malloc(sizeof(struct trans_structure)*pcnum);
+    int temp=0;
+    for(int i=0;i<genenum;i++){
+        if((strcmp((genelist+i)->gene_type,"protein_coding")==0)){
+            for(int j=genelist[i].gene_transcriptf_start;j<=genelist[i].gene_transcriptf_end;j++){
+                if(translist[j].is_canonical==1&&strcmp(translist[j].transcript_type,"protein_coding")==0){
+                    copystr((transstructurelist+temp)->gene_id, (genelist+i)->gene_id);
+                    copystr((transstructurelist+temp)->transcript_id,translist[j].transcript_id);
+                    transstructurelist[temp].strand=translist[j].transcript_strand;
+                    transstructurelist[temp].length=translist[j].EXON_length;
+                    int a=getpos(translist+j,exonlist,otherlist,transstructurelist+temp);
+                    temp++;
+                }
+            }
+        }
+    }
+
+
+    //select longest transcript
+    printf("Start selecting transcripts.\n");
+    /*for(int i=0;i<genenum;i++){
         int maxl=0,maxf=genelist[i].gene_transcriptf_start;
         for(int j=genelist[i].gene_transcriptf_start;j<=genelist[i].gene_transcriptf_end;j++){
             if(translist[j].EXON_length>maxl){
@@ -203,12 +241,49 @@ int main(){
         genelist[i].selected_transcript=maxf;
         }
     }
-    fprintf(out,"chromosome\tgene_id\tgene_name\tgene_type\ttranscript_name\ttranscript_type\tEXON_length\tCDS_length\n");
+    fprintf(out1,"chromosome\tgene_id\tgene_name\tgene_type\ttranscript_name\ttranscript_type\tEXON_length\tCDS_length\texon_number\tis_canonical\n");
     for(int i=0;i<genenum;i++)
-        fprintf(out,"%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\n",(genelist+i)->chromosome,(genelist+i)->gene_id,(genelist+i)->gene_name,(genelist+i)->gene_type,(translist+(genelist+i)->selected_transcript)->transcript_id,(translist+(genelist+i)->selected_transcript)->transcript_type,(translist+(genelist+i)->selected_transcript)->EXON_length,(translist+(genelist+i)->selected_transcript)->CDS_length);
+        fprintf(out1,"%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n",(genelist+i)->chromosome,(genelist+i)->gene_id,(genelist+i)->gene_name,(genelist+i)->gene_type,(translist+(genelist+i)->selected_transcript)->transcript_id,(translist+(genelist+i)->selected_transcript)->transcript_type,(translist+(genelist+i)->selected_transcript)->EXON_length,(translist+(genelist+i)->selected_transcript)->CDS_length,(translist+(genelist+i)->selected_transcript)->transcript_exonf_end-(translist+(genelist+i)->selected_transcript)->transcript_exonf_start+1,(translist+(genelist+i)->selected_transcript)->is_canonical);
+    for(int i=0;i<genenum;i++){
+        int maxl=0,maxf=genelist[i].gene_transcriptf_start;
+        for(int j=genelist[i].gene_transcriptf_start;j<=genelist[i].gene_transcriptf_end;j++){
+            if(translist[j].EXON_length>maxl){
+                if(strcmp(translist[j].transcript_type,"protein_coding")==0){
+                    maxl=translist[j].EXON_length;
+                maxf=j;
+                }
+            }
+        genelist[i].selected_transcript=maxf;
+        }
+    }
+    fprintf(out2,"chromosome\tgene_id\tgene_name\tgene_type\ttranscript_name\ttranscript_type\tEXON_length\tCDS_length\texon_number\tis_canonical\n");
+    for(int i=0;i<genenum;i++)
+        fprintf(out2,"%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n",(genelist+i)->chromosome,(genelist+i)->gene_id,(genelist+i)->gene_name,(genelist+i)->gene_type,(translist+(genelist+i)->selected_transcript)->transcript_id,(translist+(genelist+i)->selected_transcript)->transcript_type,(translist+(genelist+i)->selected_transcript)->EXON_length,(translist+(genelist+i)->selected_transcript)->CDS_length,(translist+(genelist+i)->selected_transcript)->transcript_exonf_end-(translist+(genelist+i)->selected_transcript)->transcript_exonf_start+1,(translist+(genelist+i)->selected_transcript)->is_canonical);
+    */
+    for(int i=0;i<genenum;i++){
+        int maxl=0,maxf=genelist[i].gene_transcriptf_start;
+        for(int j=genelist[i].gene_transcriptf_start;j<=genelist[i].gene_transcriptf_end;j++){
+            if(translist[j].is_canonical==1){
+                maxf=j;
+            }
+            genelist[i].selected_transcript=maxf;
+        }
+    }
+    fprintf(out3,"chromosome\tgene_id\tgene_name\tgene_type\ttranscript_name\ttranscript_type\tEXON_length\tCDS_length\texon_number\tis_canonical\n");
+    for(int i=0;i<genenum;i++)
+        fprintf(out3,"%s\t%s\t%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n",(genelist+i)->chromosome,(genelist+i)->gene_id,(genelist+i)->gene_name,(genelist+i)->gene_type,(translist+(genelist+i)->selected_transcript)->transcript_id,(translist+(genelist+i)->selected_transcript)->transcript_type,(translist+(genelist+i)->selected_transcript)->EXON_length,(translist+(genelist+i)->selected_transcript)->CDS_length,(translist+(genelist+i)->selected_transcript)->transcript_exonf_end-(translist+(genelist+i)->selected_transcript)->transcript_exonf_start+1,(translist+(genelist+i)->selected_transcript)->is_canonical);
     printf("Successfully write the output file!\n");
+    fprintf(out4,"gene_id\tgene_type\ttranscript_id\ttranscript_type\tEXON_length\tCDS_length\texon_number\tis_canonical\n");
+    for(int i=0;i<transnum;i++)
+        fprintf(out4,"%s\t%s\t%s\t%s\t%d\t%d\t%d\t%d\n",(genelist+(translist+i)->gene_flag)->gene_id,(genelist+(translist+i)->gene_flag)->gene_type,(translist+i)->transcript_id,(translist+i)->transcript_type,(translist+i)->EXON_length,(translist+i)->CDS_length,(translist+i)->transcript_exonf_end-(translist+i)->transcript_exonf_start+1,(translist+i)->is_canonical);
+    fprintf(out1,"gene_id\ttranscript_id\tstrand\tlength\tstart_coord\tstop_coord\n");
+    for(int i=0;i<pcnum;i++)
+        fprintf(out1,"%s\t%s\t%c\t%d\t%d\t%d\n",(transstructurelist+i)->gene_id,(transstructurelist+i)->transcript_id,(transstructurelist+i)->strand,(transstructurelist+i)->length,(transstructurelist+i)->start_coord,(transstructurelist+i)->stop_coord);
+    fclose(out4);
+    fclose(out1);
+    //fclose(out2);
+    fclose(out3);
     return 0;
-    fclose(out);
 }
 void fgetstre(char*a,FILE*f){
     int cnt=0;
@@ -316,7 +391,7 @@ void write_gene(struct gene*gene_list,struct gtfinfo*gtf,int tempg,int tempt){
     copystr((gene_list+tempg)->gene_type,gtf->attr[1].attribute_value);
     (gene_list+tempg)->gene_start=gtf->start;
     (gene_list+tempg)->gene_end=gtf->end;
-    (gene_list+tempg)->gene_transcriptf_start=tempt;
+    (gene_list+tempg)->gene_transcriptf_start=tempt+1;
 }
 void write_transcript(struct transcript*transcript_list,struct gtfinfo*gtf,int tempg,int tempt,int tempe,int tempc,int tempu,int tempo){
     if(tempt>0){
@@ -380,4 +455,63 @@ void write_close(struct gene*gene_list,struct transcript*transcript_list,int tem
     transcript_list[tempt].transcript_CDSf_end=tempc;
     transcript_list[tempt].transcript_UTRf_end=tempu;
     transcript_list[tempt].transcript_otherf_end=tempo;
+}
+int getpos(struct transcript*translist,struct exon*exonlist,struct other_feature*otherlist,struct trans_structure*transstructurelist){
+    if (transstructurelist->strand=='+'){
+        int templength=0;
+        int startcodon=0;
+        int stopcodon=0;
+        for(int i=translist->transcript_otherf_start;i<=translist->transcript_otherf_end;i++){
+            if(strcmp(otherlist[i].feature_type,"start_codon")==0){
+                startcodon=i;
+            }
+            if(strcmp(otherlist[i].feature_type,"stop_codon")==0){
+                stopcodon=i;
+            }
+        }
+        for(int i=translist->transcript_exonf_start;i<=translist->transcript_exonf_end;i++){
+            if(otherlist[startcodon].exon_flag==i){
+                transstructurelist->start_coord=templength+otherlist[startcodon].feature_start-exonlist[i].exon_start+1;
+            }
+            if(otherlist[stopcodon].exon_flag==i){
+                transstructurelist->stop_coord=templength+otherlist[stopcodon].feature_end-exonlist[i].exon_start+1;
+            }
+            templength+=exonlist[i].exon_length;
+        }
+        if (templength==translist->EXON_length){
+            return 0;
+        }
+        else{
+            return 1;
+        }
+    }
+    if (transstructurelist->strand=='-'){
+        int templength=0;
+        int startcodon=0;
+        int stopcodon=0;
+        for(int i=translist->transcript_otherf_start;i<=translist->transcript_otherf_end;i++){
+            if(strcmp(otherlist[i].feature_type,"start_codon")==0){
+                startcodon=i;
+            }
+            if(strcmp(otherlist[i].feature_type,"stop_codon")==0){
+                stopcodon=i;
+            }
+        }
+        for(int i=translist->transcript_exonf_start;i<=translist->transcript_exonf_end;i++){
+            if(otherlist[startcodon].exon_flag==i){
+                transstructurelist->start_coord=templength+exonlist[i].exon_end-otherlist[startcodon].feature_end+1;
+            }
+            if(otherlist[stopcodon].exon_flag==i){
+                transstructurelist->stop_coord=templength+exonlist[i].exon_end-otherlist[stopcodon].feature_start+1;
+            }
+            templength+=exonlist[i].exon_length;
+        }
+        if (templength==translist->EXON_length){
+            return 0;
+        }
+        else{
+            printf("%d\n",templength);
+            return 1;
+        }
+    }
 }
