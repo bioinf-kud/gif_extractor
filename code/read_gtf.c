@@ -461,9 +461,11 @@ int getpos(struct transcript*translist,struct exon*exonlist,struct other_feature
         int templength=0;
         int startcodon=0;
         int stopcodon=0;
+        int flagt=0,flagp=0;
         for(int i=translist->transcript_otherf_start;i<=translist->transcript_otherf_end;i++){
-            if(strcmp(otherlist[i].feature_type,"start_codon")==0){
+            if(strcmp(otherlist[i].feature_type,"start_codon")==0&&flagt==0){
                 startcodon=i;
+                flagt=1;
             }
             if(strcmp(otherlist[i].feature_type,"stop_codon")==0){
                 stopcodon=i;
@@ -489,9 +491,11 @@ int getpos(struct transcript*translist,struct exon*exonlist,struct other_feature
         int templength=0;
         int startcodon=0;
         int stopcodon=0;
+        int flagt=0;
         for(int i=translist->transcript_otherf_start;i<=translist->transcript_otherf_end;i++){
-            if(strcmp(otherlist[i].feature_type,"start_codon")==0){
+            if(strcmp(otherlist[i].feature_type,"start_codon")==0&&flagt==0){
                 startcodon=i;
+                flagt=1;
             }
             if(strcmp(otherlist[i].feature_type,"stop_codon")==0){
                 stopcodon=i;
