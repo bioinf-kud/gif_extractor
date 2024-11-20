@@ -18,8 +18,8 @@ struct gtfinfo{
     struct attribute attr[30];
     };
 struct gene{
-    char gene_id[20];
-    char gene_name[20];
+    char gene_id[25];
+    char gene_name[25];
     char gene_type[25];
     char chromosome[15];
     int gene_start;//position on chromosome
@@ -30,7 +30,7 @@ struct gene{
     };
 struct transcript{
     int gene_flag;
-    char transcript_id[20];
+    char transcript_id[25];
     char transcript_type[50];
     char transcript_strand;//+ or -
     int transcript_start;//position on chromosome
@@ -49,7 +49,7 @@ struct transcript{
     };
 struct exon{
     int transcript_flag;
-    char exon_id[20];
+    char exon_id[25];
     int exon_number;
     int exon_start;
     int exon_end;
@@ -79,8 +79,8 @@ struct other_feature{
     int feature_length;
     };
 struct trans_structure{
-    char gene_id[20];
-    char transcript_id[20];
+    char gene_id[25];
+    char transcript_id[25];
     char strand;
     int length;
     int start_coord;//first bp of start codon
@@ -105,11 +105,11 @@ int getpos(struct transcript*translist,struct exon*exonlist,struct other_feature
 int main(){
     int genenum=0,transnum=0,exonnum=0,CDSnum=0,UTRnum=0,othernum=0;//calculate number of each feature
     FILE*gtf,*out1,*out2,*out3,*out4;//gtf file
-    gtf=fopen("/Users/sunkai/Desktop/gencode.v46.chr_patch_hapl_scaff.annotation.gtf","r");//open gtf file for scan
-    out1=fopen("/Users/sunkai/Desktop/Gene_transcript information.tsv","w+");//open output file
+    gtf=fopen("/Users/sunkai/Desktop/gencode.vM34.annotation.gtf","r");//open gtf file for scan
+    out1=fopen("/Users/sunkai/Desktop/Gene_transcript——information.vM34.tsv","w+");//open output file
     //out2=fopen("/Users/sunkai/Downloads/longest_trans_list.v44.longest_PC.tsv","w+");
-    out3=fopen("/Users/sunkai/Downloads/canonical_trans_list.tsv","w+");
-    out4=fopen("/Users/sunkai/Desktop/trans_list.v46.tsv","w+");
+    out3=fopen("/Users/sunkai/Downloads/canonical_trans_list.vM34.tsv","w+");
+    out4=fopen("/Users/sunkai/Desktop/trans_list.vm34.tsv","w+");
     struct gtfinfo*gtfrow;
     struct gene*genelist;
     struct transcript*translist;
@@ -121,7 +121,7 @@ int main(){
     gtfrow=(struct gtfinfo*)malloc(sizeof(struct gtfinfo)*1);//record a row of gtf
 
     //scan to count number of each feature
-    printf("Start scanning the gtf file.\n");
+    printf("Start scanning the gtf file.\n"); 
     int sflag=scan_row(gtf,gtfrow);
     while(sflag!=EOF){
         if(strcmp(gtfrow->feature,"gene")==0)
@@ -137,7 +137,6 @@ int main(){
         else
             othernum++;
         sflag=scan_row(gtf,gtfrow);
-        
     }
     fclose(gtf);
     //allocate memory for each list
@@ -152,7 +151,7 @@ int main(){
 
     //read gtf file and record information
     printf("Start reading the gtf file.\n");
-    gtf=fopen("/Users/sunkai/Desktop/gencode.v46.chr_patch_hapl_scaff.annotation.gtf","r");//open gtf file
+    gtf=fopen("/Users/sunkai/Desktop/gencode.vM34.annotation.gtf","r");//open gtf file
     int rflag=read_row(gtf,gtfrow);
     int gflag=-1,tflag=-1,eflag=-1,cflag=-1,uflag=-1,oflag=-1;
     while(1){
